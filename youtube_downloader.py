@@ -20,17 +20,19 @@ from youtube_downloader_backend import ConfigManager, URLValidator, DownloadMana
 
 
 class PlaylistConfirmDialog(ctk.CTkToplevel):
-    """Dialog to confirm playlist downloads"""
+    """Dialog to confirm playlist downloads with range options"""
 
-    def __init__(self, parent, video_info: VideoInfo):
+    def __init__(self, parent, video_info: VideoInfo, url: str):
         super().__init__(parent)
 
         self.result = False
         self.video_info = video_info
+        self.url = url
+        self.playlist_items = None  # None = all, or "1-5", "1,3,5", etc.
 
         # Configure window
-        self.title("Playlist Detected")
-        self.geometry("400x200")
+        self.title("Playlist Options")
+        self.geometry("500x400")
         self.resizable(False, False)
 
         # Center on parent
@@ -49,14 +51,98 @@ class PlaylistConfirmDialog(ctk.CTkToplevel):
         )
         title_label.pack(pady=(0, 10))
 
-        message_label = ctk.CTkLabel(
+        info_label = ctk.CTkLabel(
             main_frame,
-            text=f"This playlist contains {video_info.playlist_count} videos.\n\n"
-                 f"Playlist: {video_info.title[:50]}...\n\n"
-                 f"Do you want to download all videos?",
-            font=ctk.CTkFont(size=12)
+            text=f"Playlist: {video_info.title[:45]}...\n"
+                 f"Total videos: {video_info.playlist_count}\n\n"
+                 f"Choose what to download:",
+            font=ctk.CTkFont(size=12),
+            justify="left"
         )
-        message_label.pack(pady=(0, 20))
+        info_label.pack(pady=(0, 15))
+
+        # Options frame
+        options_frame = ctk.CTkFrame(main_frame)
+        options_frame.pack(fill="both", expand=True, pady=(0, 15))
+
+        self.mode_var = ctk.StringVar(value="all")
+
+        # Option 1: Download All
+        all_radio = ctk.CTkRadioButton(
+            options_frame,
+            text=f"Download All ({video_info.playlist_count} videos)",
+            variable=self.mode_var,
+            value="all",
+            font=ctk.CTkFont(size=13)
+        )
+        all_radio.pack(anchor="w", padx=15, pady=8)
+
+        # Option 2: Single Video (if URL has video ID)
+        if 'watch?v=' in url or 'youtu.be/' in url:
+            single_radio = ctk.CTkRadioButton(
+                options_frame,
+                text="Download Single Video Only",
+                variable=self.mode_var,
+                value="single",
+                font=ctk.CTkFont(size=13)
+            )
+            single_radio.pack(anchor="w", padx=15, pady=8)
+
+        # Option 3: First N videos
+        first_n_frame = ctk.CTkFrame(options_frame, fg_color="transparent")
+        first_n_frame.pack(anchor="w", fill="x", padx=15, pady=8)
+
+        first_n_radio = ctk.CTkRadioButton(
+            first_n_frame,
+            text="Download First",
+            variable=self.mode_var,
+            value="first_n",
+            font=ctk.CTkFont(size=13)
+        )
+        first_n_radio.pack(side="left")
+
+        self.first_n_entry = ctk.CTkEntry(
+            first_n_frame,
+            width=60,
+            placeholder_text="5"
+        )
+        self.first_n_entry.pack(side="left", padx=5)
+
+        videos_label = ctk.CTkLabel(
+            first_n_frame,
+            text="videos",
+            font=ctk.CTkFont(size=13)
+        )
+        videos_label.pack(side="left")
+
+        # Option 4: Custom Range
+        range_frame = ctk.CTkFrame(options_frame, fg_color="transparent")
+        range_frame.pack(anchor="w", fill="x", padx=15, pady=8)
+
+        range_radio = ctk.CTkRadioButton(
+            range_frame,
+            text="Custom Range:",
+            variable=self.mode_var,
+            value="range",
+            font=ctk.CTkFont(size=13)
+        )
+        range_radio.pack(side="left")
+
+        self.range_entry = ctk.CTkEntry(
+            range_frame,
+            width=120,
+            placeholder_text="e.g. 1-5 or 1,3,5"
+        )
+        self.range_entry.pack(side="left", padx=5)
+
+        # Help text
+        help_label = ctk.CTkLabel(
+            options_frame,
+            text="Range examples: 1-5, 10-20, 1,5,10",
+            font=ctk.CTkFont(size=10),
+            text_color="gray"
+        )
+        help_label.pack(anchor="w", padx=35, pady=(0, 5))
 
         # Buttons
         button_frame = ctk.CTkFrame(main_frame, fg_color="transparent")
@@ -73,9 +159,9 @@ class PlaylistConfirmDialog(ctk.CTkToplevel):
 
         download_btn = ctk.CTkButton(
             button_frame,
-            text=f"Download All ({video_info.playlist_count})",
+            text="Download",
             command=self._on_download,
-            width=180
+            width=120
         )
         download_btn.pack(side="right", expand=True, padx=5)
 
@@ -84,6 +170,25 @@ class PlaylistConfirmDialog(ctk.CTkToplevel):
         self.destroy()
 
     def _on_download(self):
+        mode = self.mode_var.get()
+
+        if mode == "all":
+            self.playlist_items = None  # Download all
+        elif mode == "single":
+            self.playlist_items = "1"  # Just the first/single video
+        elif mode == "first_n":
+            try:
+                n = int(self.first_n_entry.get() or "5")
+                self.playlist_items = f"1-{n}"
+            except ValueError:
+                self.playlist_items = "1-5"  # Default to first 5
+        elif mode == "range":
+            custom_range = self.range_entry.get().strip()
+            if custom_range:
+                self.playlist_items = custom_range
+            else:
+                self.playlist_items = None  # Default to all if empty
+
         self.result = True
         self.destroy()
 
@@ -132,7 +237,7 @@ class YouTubeDownloaderGUI:
 
         version_label = ctk.CTkLabel(
             header_frame,
-            text="v2.0",
+            text="v2.1",
             font=ctk.CTkFont(size=12),
             text_color="gray"
         )
@@ -471,7 +576,9 @@ class YouTubeDownloaderGUI:
         self._log(f"🔍 Found {len(urls)} URL(s) to download")
         self._log(f"📂 Category: {category} | 🎬 Quality: {quality}")
 
-        # Check for playlists and confirm
+        # Check for playlists and confirm - store playlist items for each URL
+        url_playlist_items = {}  # Map URL to playlist_items value
+
         for url in urls:
             if URLValidator.is_playlist(url):
                 # Get playlist info
@@ -479,18 +586,27 @@ class YouTubeDownloaderGUI:
                 info = self.download_manager.get_video_info(url)
 
                 if info and info.is_playlist:
-                    # Show confirmation dialog
-                    dialog = PlaylistConfirmDialog(self.root, info)
+                    # Show confirmation dialog with options
+                    dialog = PlaylistConfirmDialog(self.root, info, url)
                     self.root.wait_window(dialog)
 
                     if not dialog.result:
                         self._log(f"❌ Playlist download cancelled by user")
                         return
                     else:
-                        self._log(f"✓ Confirmed: Will download {info.playlist_count} videos from playlist")
+                        # Store the playlist_items setting for this URL
+                        url_playlist_items[url] = dialog.playlist_items
 
-        # Start downloads
-        self.download_queue = urls.copy()
+                        if dialog.playlist_items:
+                            self._log(f"✓ Confirmed: Will download items {dialog.playlist_items} from playlist")
+                        else:
+                            self._log(f"✓ Confirmed: Will download all {info.playlist_count} videos from playlist")
+            else:
+                # Not a playlist, no playlist_items filter needed
+                url_playlist_items[url] = None
+
+        # Start downloads - queue now stores (url, playlist_items) tuples
+        self.download_queue = [(url, url_playlist_items.get(url)) for url in urls]
         self._process_next_download(category, quality, start_time, end_time)
 
     def _process_next_download(self, category, quality, start_time, end_time):
@@ -502,7 +618,8 @@ class YouTubeDownloaderGUI:
             self.current_video_label.configure(text="No active download", text_color="gray")
             return
 
-        url = self.download_queue.pop(0)
+        # Unpack URL and playlist_items from queue
+        url, playlist_items = self.download_queue.pop(0)
         remaining = len(self.download_queue)
 
         if remaining > 0:
@@ -530,7 +647,8 @@ class YouTubeDownloaderGUI:
             ),
             info_callback=self._update_current_video,
             start_time=start_time,
-            end_time=end_time
+            end_time=end_time,
+            playlist_items=playlist_items
         )
 
     def _on_download_complete(self, message: str, category, quality, start_time, end_time):

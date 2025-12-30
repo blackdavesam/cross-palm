@@ -1,8 +1,16 @@
-# YouTube Downloader Pro v2.0
+# YouTube Downloader Pro v2.1
 
 A modern, feature-rich YouTube downloader with a beautiful interface built with CustomTkinter and yt-dlp.
 
-## ✨ New in v2.0
+## ✨ New in v2.1
+
+- 🎯 **Playlist Partial Downloads** - Download specific videos from playlists
+  - Download single video only
+  - Download first N videos
+  - Custom ranges (e.g., 1-5, 10-20, 1,3,5)
+  - Prevents accidentally downloading entire large playlists
+
+## ✨ What's in v2.0
 
 - 🔗 **Batch Downloads** - Paste multiple URLs at once
 - 📝 **Playlist Confirmation** - Warns before downloading playlists with video count
@@ -20,7 +28,7 @@ A modern, feature-rich YouTube downloader with a beautiful interface built with 
 - ✅ **YouTube-only downloads** - Validates URLs to ensure YouTube sources only
 - 📁 **Category-based organization** - Six preset categories (History, Math, Home Improvement, Coding, Music, Entertainment)
 - 🎬 **Multiple quality options** - 360p, 480p, 720p, 1080p, or Best available
-- 📝 **Playlist support** - Download entire playlists with confirmation dialog
+- 📝 **Smart playlist support** - Download entire playlists, single videos, first N, or custom ranges
 - ⏱️ **Video segments** - Download specific time ranges from videos
 - 💾 **Persistent settings** - Config saved in JSON for your preferences
 - 🎨 **Modern UI** - Clean, intuitive dark-themed interface
@@ -103,11 +111,21 @@ python3 youtube_downloader.py
 3. Click **Download**
 4. Videos download one after another
 
-#### Playlist Download
+#### Playlist Download with Options
 1. Paste a playlist URL
-2. A confirmation dialog shows the video count
-3. Click **Download All** to proceed or **Cancel** to skip
-4. All videos download to your chosen category
+2. A dialog appears with multiple options:
+   - **Download All** - Downloads every video in the playlist
+   - **Download Single Video** - Downloads just one video (if URL contains video ID)
+   - **Download First N** - Enter a number (e.g., 5) to download first 5 videos
+   - **Custom Range** - Enter ranges like `1-10`, `5-15`, or specific videos like `1,5,10,20`
+3. Choose your option and click **Download**
+4. Videos download to your chosen category
+
+**Playlist Range Examples:**
+- `1-5` - Downloads videos 1 through 5
+- `10-20` - Downloads videos 10 through 20
+- `1,3,5,7` - Downloads videos 1, 3, 5, and 7 only
+- `5-10,15-20` - Downloads videos 5-10 and 15-20
 
 #### Video Segment Download
 1. Paste a video URL
@@ -274,7 +292,15 @@ When the app is focused:
 
 ## What's New in Each Version
 
-### v2.0 (Current)
+### v2.1 (Current)
+- **Playlist partial downloads** - Download specific videos from playlists
+  - Single video option
+  - First N videos option
+  - Custom range selector (e.g., 1-5, 10-20, 1,3,5)
+- Enhanced playlist dialog with multiple download options
+- Prevents accidental large playlist downloads
+
+### v2.0
 - Multi-URL batch downloads
 - Playlist confirmation dialog
 - Quality selector (360p-Best)

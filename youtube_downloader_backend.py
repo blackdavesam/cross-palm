@@ -202,9 +202,15 @@ class DownloadManager:
         error_callback: Optional[Callable] = None,
         info_callback: Optional[Callable] = None,
         start_time: Optional[str] = None,
-        end_time: Optional[str] = None
+        end_time: Optional[str] = None,
+        playlist_items: Optional[str] = None
     ):
-        """Download video(s) from YouTube"""
+        """Download video(s) from YouTube
+
+        Args:
+            playlist_items: Playlist item spec (e.g., "1-5", "1,3,5", "1", etc.)
+                          None means download all items
+        """
 
         def download_thread():
             try:
@@ -234,6 +240,10 @@ class DownloadManager:
                     'quiet': False,
                     'no_warnings': False,
                 }
+
+                # Add playlist items filter if specified
+                if playlist_items:
+                    ydl_opts['playlist_items'] = playlist_items
 
                 # Add time segment options if provided
                 if start_time or end_time:
