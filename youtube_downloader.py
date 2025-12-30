@@ -538,7 +538,7 @@ class YouTubeDownloaderGUI:
             )
 
     def _start_download(self):
-        """Start the download process"""
+        """Start the download process or add to queue"""
         urls_text = self.url_textbox.get("1.0", "end").strip()
 
         # Validate URLs
@@ -551,10 +551,6 @@ class YouTubeDownloaderGUI:
         if not urls:
             self._log("❌ Error: No valid YouTube URLs found")
             self._log("   Make sure URLs start with youtube.com or youtu.be")
-            return
-
-        if self.download_manager.is_downloading:
-            self._log("❌ Download already in progress")
             return
 
         # Get parameters
@@ -571,10 +567,6 @@ class YouTubeDownloaderGUI:
         if end_time and not re.match(time_pattern, end_time):
             self._log("❌ Error: Invalid end time format. Use HH:MM:SS")
             return
-
-        # Log download start
-        self._log(f"🔍 Found {len(urls)} URL(s) to download")
-        self._log(f"📂 Category: {category} | 🎬 Quality: {quality}")
 
         # Check for playlists and confirm - store playlist items for each URL
         url_playlist_items = {}  # Map URL to playlist_items value
@@ -605,9 +597,28 @@ class YouTubeDownloaderGUI:
                 # Not a playlist, no playlist_items filter needed
                 url_playlist_items[url] = None
 
+        # Create new queue items
+        new_items = [(url, url_playlist_items.get(url)) for url in urls]
+
+        # If already downloading, add to existing queue
+        if self.download_manager.is_downloading:
+            self.download_queue.extend(new_items)
+            self._log(f"➕ Added {len(urls)} URL(s) to queue ({len(self.download_queue)} total in queue)")
+            self._log(f"📂 Category: {category} | 🎬 Quality: {quality}")
+            # Clear URL textbox
+            self.url_textbox.delete("1.0", "end")
+            return
+
+        # Start new downloads
+        self._log(f"🔍 Found {len(urls)} URL(s) to download")
+        self._log(f"📂 Category: {category} | 🎬 Quality: {quality}")
+
         # Start downloads - queue now stores (url, playlist_items) tuples
-        self.download_queue = [(url, url_playlist_items.get(url)) for url in urls]
+        self.download_queue = new_items
         self._process_next_download(category, quality, start_time, end_time)
+
+        # Clear URL textbox after starting
+        self.url_textbox.delete("1.0", "end")
 
     def _process_next_download(self, category, quality, start_time, end_time):
         """Process the next URL in the queue"""
@@ -627,8 +638,8 @@ class YouTubeDownloaderGUI:
         else:
             self._log(f"⬇️ Starting download...")
 
-        # Disable download button, enable cancel
-        self.download_btn.configure(state="disabled", text="Downloading...")
+        # Change download button to "Add to Queue", enable cancel
+        self.download_btn.configure(state="normal", text="➕ Add to Queue")
         self.cancel_btn.configure(state="normal")
         self.progress_bar.set(0)
         self.progress_label.configure(text="Starting download...")
